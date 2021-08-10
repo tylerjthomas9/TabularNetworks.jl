@@ -19,20 +19,6 @@ using CUDA
     activation_function = relu
 end
 
-
-# set up continious, categorical inputs
-function ContInput(;continious_variables=10::Int64,)
-    return Chain(Dense(continious_variables, 32),
-                BatchNorm(32, relu))
-end
-
-function CatInput(;ohe_size=10::Int64,)
-    return Chain(Dense(ohe_size, 32, relu),
-    )
-end
-
-
-
 # build model
 # TODO: variable number of dense layers
 function tab_mlp(; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
