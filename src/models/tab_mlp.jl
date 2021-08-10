@@ -32,4 +32,4 @@ function tab_mlp(; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
         Dropout(0.10),
         Dense(64, n_outputs)
     )
-en
+end
