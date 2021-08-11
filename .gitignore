@@ -23,3 +23,6 @@ docs/site/
 # environment.
 Manifest.toml
 src/models/test.jl
+src/models/test_tab_mlp.jl
+.gitignore
+src/models/test_tabnet.jl
