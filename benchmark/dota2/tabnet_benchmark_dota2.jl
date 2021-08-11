@@ -3,6 +3,25 @@ include("../../src/models/tab_mlp.jl")
 include("./prepare_data.jl")
 using CSV
 using ProgressMeter
+using Flux: onecold
+using Flux.Losses: logitcrossentropy
+
+
+function loss_and_accuracy(data_loader, model, device)
+    acc = 0
+    ls = 0.0f0
+    num = 0
+    for (X_cont, X_cat, y) in data_loader
+        y = y |> device
+        x = map(device, (X_cont, X_cat))
+        pred = model(x)
+        ls += logitcrossentropy(pred, y, agg=sum)
+        acc += sum(onecold(cpu(pred)) .== onecold(cpu(y)))
+        num +=  size(y, 2)
+    end
+    return ls / num, acc / num
+end
+
 
 function train(; kws...)
     args = TabMLPArgs(; kws...) # collect options in a struct for convenience
@@ -35,8 +54,14 @@ function train(; kws...)
             gs = gradient(() -> logitcrossentropy(model(x), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
+
+        # get train/test Losses
+        train_loss, train_acc = loss_and_accuracy(train_loader, model, device)
+        test_loss, test_acc = loss_and_accuracy(test_loader, model, device)
+        println("  train_loss = $train_loss, train_accuracy = $train_acc")
+        println("  test_loss = $test_loss, test_accuracy = $test_acc")
     end
 end
 
 
-train(; batchsize=1024, hidden_sizes=[128, 128])
+train(; batchsize=4096, hidden_sizes=[128, 128], cat_dense_size=128)
