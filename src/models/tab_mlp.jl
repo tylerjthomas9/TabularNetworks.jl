@@ -29,31 +29,21 @@ function tab_mlp_input(args; cont_var, cat_var)
 end
 
 # TODO: elegant way to create a variable number of layers
-function tab_mlp(args; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
-    if size(args.hidden_sizes, 1) == 1
-        return Chain(tab_mlp_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tab_mlp_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tab_mlp_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[2], args.hidden_sizes[3], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    end
+function tab_mlp(args::TabMLPArgs; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
 
+    input = tab_mlp_input(args; cont_var, cat_var)
+    d1 = Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function)
+    dropout = Dropout(args.dropout_rate)
+    output = Dense(args.hidden_sizes[end], n_outputs)
+
+    if size(args.hidden_sizes, 1) == 1
+        return Chain(input, d1, dropout, output)
+    elseif size(args.hidden_sizes, 1) == 2
+        d2 = Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function)
+        return Chain(input, d1, dropout, d2, dropout, output)
+    elseif size(args.hidden_sizes, 1) == 3
+        d2 = Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function)
+        d3 = Dense(args.hidden_sizes[2], args.hidden_sizes[3], args.activation_function)
+        return Chain(input, d1, dropout, d2, dropout, d3, dropout, output)
+    end
 end

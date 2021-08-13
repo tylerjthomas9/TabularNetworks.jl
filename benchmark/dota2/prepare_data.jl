@@ -2,6 +2,7 @@ using CSV
 using DataFrames
 using Flux: onehotbatch
 using Flux.Data: DataLoader
+using StatsBase
 
 
 function getdata(args,)
@@ -13,6 +14,12 @@ function getdata(args,)
 
     X_train_cont = train[!, [:Column2, :Column3]]|> Array{Float32} |>  transpose
     X_test_cont = test[!, [:Column2, :Column3]] |> Array{Float32} |>  transpose
+
+
+    # standardize continious data
+    dt = fit(ZScoreTransform, X_train_cont, dims=2)
+    X_train_cont = StatsBase.transform(dt, X_train_cont)
+    X_test_cont = StatsBase.transform(dt, X_test_cont)
 
     # One-hot-encode the labels
     y_train = onehotbatch(train[!, :Column1], [-1, 1])

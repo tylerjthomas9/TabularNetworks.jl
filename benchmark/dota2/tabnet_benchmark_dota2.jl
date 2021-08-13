@@ -64,4 +64,4 @@ function train(; kws...)
 end
 
 
-train(; batchsize=4096, hidden_sizes=[128, 128], cat_dense_size=128)
+train(; batchsize=8192, hidden_sizes=[256, 256], cat_dense_size=128)
