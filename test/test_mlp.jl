@@ -1,11 +1,35 @@
-# dataset: https://archive.ics.uci.edu/ml/datasets/Dota2+Games+Results
-include("../../src/models/mlp.jl")
-include("./prepare_data.jl")
-using CSV
+include("../src/models/mlp.jl")
 using ProgressMeter
-using Flux: onecold
+using Flux: onecold, onehotbatch
 using Flux.Losses: logitcrossentropy
+using Flux.Data: DataLoader
+using StatsBase
 
+function getdata(args,)
+    train = zeros(5, 64)
+    train[:, 33:end] .= 1.0
+
+
+    y_train = zeros(64)
+    y_train[33:end] .= 1.0
+
+    X_train_cat = train[1:2, :] |> Array{Float32} 
+    X_test_cat = X_train_cat
+
+    X_train_cont = train[3:5, :] |> Array{Float32} 
+    X_test_cont = X_train_cont
+
+
+    # One-hot-encode the labels
+    y_train = onehotbatch(y_train, [0, 1])
+    y_test = onehotbatch(y_train, [0, 1])
+
+    # Create DataLoaders (mini-batch iterators)
+    train_loader = DataLoader((X_train_cont, X_train_cat, y_train),  shuffle=true)
+    test_loader = DataLoader((X_test_cont, X_test_cat, y_test), batchsize=args.batchsize, shuffle=false)
+
+    return train_loader, test_loader
+end
 
 function loss_and_accuracy(data_loader, model, device)
     acc = 0
@@ -64,4 +88,4 @@ function train(; kws...)
 end
 
 
-train(; batchsize=8192, hidden_sizes=[256, 256], cat_dense_size=128)
+train(; batchsize=16, hidden_sizes=[16, 8], cat_dense_size=16)
