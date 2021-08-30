@@ -6,7 +6,7 @@ using Parameters: @with_kw
 using CUDA
 
 @with_kw mutable struct MLPArgs
-    lr::Float64 = 0.1		# learning rate
+    lr::Float64 = 1e-2		# learning rate
     batchsize::Int64 = 16  # batch size
     epochs::Int = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
