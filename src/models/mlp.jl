@@ -5,8 +5,7 @@ using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
 using CUDA
 
-# Struct to define hyperparameters
-@with_kw mutable struct TabMLPArgs
+@with_kw mutable struct MLPArgs
     lr::Float64 = 0.1		# learning rate
     batchsize::Int64 = 16  # batch size
     epochs::Int = 10        # number of epochs
@@ -20,7 +19,7 @@ using CUDA
 end
 
 # build model
-function tab_mlp_input(args; cont_var, cat_var)
+function mlp_input(args; cont_var, cat_var)
     return Chain(Parallel(vcat,
         Chain(Dense(cont_var, args.cont_dense_size),
             BatchNorm(args.cont_dense_size, args.activation_function)),
@@ -29,9 +28,9 @@ function tab_mlp_input(args; cont_var, cat_var)
 end
 
 # TODO: elegant way to create a variable number of layers
-function tab_mlp(args::TabMLPArgs; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
+function mlp(args::MLPArgs; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
 
-    input = tab_mlp_input(args; cont_var, cat_var)
+    input = mlp_input(args; cont_var, cat_var)
     d1 = Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function)
     dropout = Dropout(args.dropout_rate)
     output = Dense(args.hidden_sizes[end], n_outputs)

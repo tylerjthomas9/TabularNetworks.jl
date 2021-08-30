@@ -1,5 +1,5 @@
 # dataset: https://archive.ics.uci.edu/ml/datasets/Dota2+Games+Results
-include("../../src/models/tab_mlp.jl")
+include("../../src/models/mlp.jl")
 include("./prepare_data.jl")
 using CSV
 using ProgressMeter
@@ -24,7 +24,7 @@ end
 
 
 function train(; kws...)
-    args = TabMLPArgs(; kws...) # collect options in a struct for convenience
+    args = MLPArgs(; kws...) # collect options in a struct for convenience
 
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
@@ -39,7 +39,7 @@ function train(; kws...)
     train_loader, test_loader = getdata(args)
 
     # Construct model
-    model = tab_mlp(args; cont_var=2, cat_var=114) |> device
+    model = mlp(args; cont_var=2, cat_var=114) |> device
     ps = Flux.params(model) # model's trainable parameters
     
     ## Optimizer
