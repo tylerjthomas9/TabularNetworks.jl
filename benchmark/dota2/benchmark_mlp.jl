@@ -5,6 +5,7 @@ include("./prepare_data.jl")
 using CSV
 using ProgressMeter
 using Flux.Losses: logitcrossentropy
+Random.seed!(0)
 
 
 function train(; kws...)

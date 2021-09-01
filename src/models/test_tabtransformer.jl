@@ -3,7 +3,7 @@ function getdata(args,)
     # generate fake data
     n_obs = 1_000
     X_cont = rand(10, n_obs) |> Array{Float32}
-    X_cat = rand(0:1, 10, n_obs) |> Array{Float32}
+    X_cat = rand(0:1, 5, n_obs) |> Array{Float32}
 
     y = rand(0:1, n_obs) |> Array{Float32}
 
@@ -29,11 +29,13 @@ function train(; kws...)
         device = cpu
     end
 
+    device = cpu
+
     # Create test and train dataloaders
     train_loader = getdata(args)
 
     # Construct model
-    model = tab_mlp(args) |> device
+    model = tabtransformer(args) |> device
     ps = Flux.params(model) # model's trainable parameters
     
     ## Optimizer
@@ -45,11 +47,12 @@ function train(; kws...)
         for (X_cont, X_cat, y) in train_loader
             y = y |> device
             x = map(device, (X_cont, X_cat))
-            gs = gradient(() -> logitcrossentropy(model(x), y), ps) # compute gradient
-            Flux.Optimise.update!(opt, ps, gs) # update parameters
+            model(x)
+            #gs = gradient(() -> logitcrossentropy(model(x), y), ps) # compute gradient
+            #Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
     end
 end
 
 
-train(; batchsize=128)
+train(input_dims = 5; batchsize=128)
