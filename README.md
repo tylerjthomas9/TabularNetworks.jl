@@ -14,3 +14,4 @@ Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-wided
 
 ## Long term goals
 * Pre-training support for models like TabNet
+* Comprehensive documentation on the architectures 
