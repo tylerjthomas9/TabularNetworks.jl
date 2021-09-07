@@ -5,7 +5,6 @@ include("./prepare_data.jl")
 using CSV
 using ProgressMeter
 using Flux.Losses: logitcrossentropy
-Random.seed!(0)
 
 
 function train(; kws...)
@@ -24,7 +23,8 @@ function train(; kws...)
     train_loader, test_loader = getdata(args)
 
     # Construct model
-    model = mlp(args; cont_var=2, cat_var=114) |> device
+    #model = mlp(args; cont_var=2, cat_var=114) |> device
+    model = mlp(args; cont_var=10, cat_var=10) |> device
     ps = Flux.params(model) # model's trainable parameters
     
     ## Optimizer

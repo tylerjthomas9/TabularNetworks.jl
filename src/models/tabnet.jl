@@ -7,6 +7,7 @@ using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
 using CUDA
 
+# Struct to define hyperparameters
 @with_kw mutable struct TabNetArgs
     lr::Float64 = 0.1		# learning rate
     batchsize::Int64 = 16  # batch size

@@ -7,6 +7,7 @@ function loss_and_accuracy(data_loader::DataLoader, model, device;
     acc = 0
     ls = 0.0f0
     num = 0
+    testmode!(model)
     for (X_cont, X_cat, y) in data_loader
         y = y |> device
         x = map(device, (X_cont, X_cat))
@@ -15,7 +16,8 @@ function loss_and_accuracy(data_loader::DataLoader, model, device;
         acc += sum(onecold(cpu(pred)) .== onecold(cpu(y)))
         num +=  size(y, 2)
     end
-
+    testmode!(model, false)
+    
     ls = ls / num
     acc = acc / num
     if verbose
