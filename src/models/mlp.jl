@@ -8,7 +8,7 @@ using CUDA
 @with_kw mutable struct MLPArgs
     lr::Float64 = 1e-2		# learning rate
     batchsize::Int64 = 16  # batch size
-    epochs::Int = 10        # number of epochs
+    epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
     hidden_sizes::Vector{Int64} = [64, 64] # Size of hidden layers

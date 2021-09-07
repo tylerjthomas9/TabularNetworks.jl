@@ -6,28 +6,26 @@ using Flux.Data: DataLoader
 using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
 using CUDA
-include("./attention_utils.jl")
+using NeuralAttentionlib
+using NeuralAttentionlib: CausalMask, BiLengthMask, BatchedMask
+using NNlib
 
 # Struct to define hyperparameters
 @with_kw mutable struct TabTransfortmerArgs
     lr::Float64 = 0.1		# learning rate
     batchsize::Int64 = 16  # batch size
-    epochs::Int = 10        # number of epochs
+    epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
     hidden_sizes::Vector{Int64} = [64, 64] # Size of hidden layers
     dropout_rate::Float64 = 0.10 # dropout for dense layers
     activation_function = relu
+    mha_heads::Int64 = 4
+    mha_input_dims::Int64 = 7
+    mha_head_dims::Int64 = 5
+    mha_output_dims::Int64 = 8
 end
 
-
-# https://github.com/sdobber/FluxArchitectures/blob/master/DSANet/DSANet.jl
-function Scaled_Dot_Product_Attention(q, k, v, temperature, attn_dropout=0.1)
-	attn1 = NNlib.batched_mul(q, permutedims(k,[2,1,3])) / temperature
-	attn2 = Flux.softmax(attn1, dims=2)
-    attn3 = Dropout(attn_dropout)(attn2)
-    return NNlib.batched_mul(attn3,v)
-end
 
 
 function tabtransformer_input(args; cont_var, cat_var)
