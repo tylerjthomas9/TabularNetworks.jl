@@ -35,8 +35,9 @@ function train(; kws...)
         println("Epoch: $epoch")
         @showprogress 1 "Training..." for (X_cont, X_cat, y) in train_loader
             y = y |> device
-            x = map(device, (X_cont, X_cat))
-            gs = gradient(() -> logitcrossentropy(model(x), y), ps) # compute gradient
+            X_cat = X_cat |> device
+            X_cont = X_cont |> device
+            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 

@@ -5,11 +5,15 @@ include("./prepare_data.jl")
 using CSV
 using ProgressMeter
 using Flux.Losses: logitcrossentropy
+using Random
 
 
 function train(; kws...)
-    args = MLPArgs(; kws...) # collect options in a struct for convenience
+    # load hyperparameters
+    args = MLPArgs(; kws...)
+    args.seed > 0 && Random.seed!(args.seed)
 
+    # GPU setup
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
         CUDA.allowscalar(false)
@@ -19,12 +23,14 @@ function train(; kws...)
         device = cpu
     end
 
+    device=cpu
+
     # Create test and train dataloaders
     train_loader, test_loader = getdata(args)
 
     # Construct model
     #model = mlp(args; cont_var=2, cat_var=114) |> device
-    model = mlp(args; cont_var=10, cat_var=10) |> device
+    model = MLP(args) |> device
     ps = Flux.params(model) # model's trainable parameters
     
     ## Optimizer
@@ -35,9 +41,11 @@ function train(; kws...)
         println("Epoch: $epoch")
         @showprogress 1 "Training..." for (X_cont, X_cat, y) in train_loader
             y = y |> device
-            x = map(device, (X_cont, X_cat))
-            gs = gradient(() -> logitcrossentropy(model(x), y), ps) # compute gradient
-            Flux.Optimise.update!(opt, ps, gs) # update parameters
+            X_cat = X_cat |> device
+            X_cont = X_cont |> device
+            model(X_cat, X_cont)
+            #gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
+            #Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 
         # get train/test Losses
@@ -47,4 +55,5 @@ function train(; kws...)
 end
 
 
-train(; batchsize=2048, hidden_sizes=[256, 256], cat_dense_size=128)
+train(; batchsize=2048, hidden_dims=[256, 256], cat_hidden_dim=128, 
+    cont_input_dim=10, cat_input_dim=10, output_dim=2)

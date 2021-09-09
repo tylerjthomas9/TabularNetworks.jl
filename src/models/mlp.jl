@@ -4,44 +4,63 @@ using Flux.Data: DataLoader
 using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
 using CUDA
+include("../utils/concat_layers.jl")
 
 @with_kw mutable struct MLPArgs
+    cat_input_dim::Int64
+    cont_input_dim::Int64
+    output_dim::Int64
     lr::Float64 = 1e-2		# learning rate
     batchsize::Int64 = 16  # batch size
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
-    hidden_sizes::Vector{Int64} = [64, 64] # Size of hidden layers
-    cont_dense_size::Int64 = 32 # size of hidden layer for continious input
-    cat_dense_size::Int64 = 32 # size of hidden layer for categorical input
+    hidden_dims::Vector{Int64} = [64, 64] # Size of hidden layers
+    cont_hidden_dim::Int64 = 32 # size of hidden layer for continious input
+    cat_hidden_dim::Int64 = 32 # size of hidden layer for categorical input
     dropout_rate::Float64 = 0.10 # dropout for dense layers
     activation_function = relu
+    seed::Int64 = 42
 end
 
-# build model
-function mlp_input(args; cont_var, cat_var)
-    return Chain(Parallel(vcat,
-        Dense(cont_var, args.cont_dense_size, args.activation_function),
-        Dense(cat_var, args.cat_dense_size, args.activation_function))
+
+struct MLP_Input
+    categorical_input
+    continious_input
+end
+@functor MLP_Input
+
+MLP_Input(args::MLPArgs) = MLP_Input(
+    Chain(Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),),
+    Chain(
+        BatchNorm(args.cont_input_dim, ),
+        Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function)
     )
+)
+
+function (mlp_input::MLP_Input)(cat, cont)
+    mlp_input.categorical_input(cat),
+    mlp_input.continious_input(cont)
 end
 
-# TODO: elegant way to create a variable number of layers
-function mlp(args::MLPArgs; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
-
-    input = mlp_input(args; cont_var, cat_var)
-    d1 = Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function)
-    dropout = Dropout(args.dropout_rate)
-    output = Dense(args.hidden_sizes[end], n_outputs)
-
-    if size(args.hidden_sizes, 1) == 1
-        return Chain(input, d1, dropout, output)
-    elseif size(args.hidden_sizes, 1) == 2
-        d2 = Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function)
-        return Chain(input, d1, dropout, d2, dropout, output)
-    elseif size(args.hidden_sizes, 1) == 3
-        d2 = Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function)
-        d3 = Dense(args.hidden_sizes[2], args.hidden_sizes[3], args.activation_function)
-        return Chain(input, d1, dropout, d2, dropout, d3, dropout, output)
-    end
+struct MLP
+    batch_norm
+    dense
+    output
 end
+
+MLP(args::MLPArgs) = MLP(
+    MLP_Input(args),
+    Dense(args.cat_hidden_dim + args.cont_hidden_dim, args.hidden_dims[1]),
+    Dense(args.hidden_dims[1], args.output_dim)
+)
+
+function (mlp::MLP)(cat, cont)
+    h = mlp.input(cat, cont)
+    h = Concat(h)
+    h2 = mlp.dense(h)
+    mlp.output(h2)
+end
+
+
+
