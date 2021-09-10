@@ -10,8 +10,9 @@ function loss_and_accuracy(data_loader::DataLoader, model, device;
     testmode!(model)
     for (X_cont, X_cat, y) in data_loader
         y = y |> device
-        x = map(device, (X_cont, X_cat))
-        pred = model(x)
+        X_cat = X_cat |> device
+        X_cont = X_cont |> device
+        pred = model(X_cat, X_cont)
         ls += logitcrossentropy(pred, y, agg=sum)
         acc += sum(onecold(cpu(pred)) .== onecold(cpu(y)))
         num +=  size(y, 2)
