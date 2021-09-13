@@ -34,21 +34,22 @@ function getdata(args,)
     return train_loader, test_loader
 end
 
-
+"""
 function getdata(args,)
     y_train = zeros(50)
     y_train[26:end] .= 1.0
     y_train = onehotbatch(y_train, [0.0, 1.0])
 
     X_train_cont = ones(10, 50)
-    X_train_cont[:, 26:end] .= zeros(10, 25) .- rand(10, 25)
+    X_train_cont[:, 26:end] .= zeros(10, 25) .- 5
 
     X_train_cat = ones(10, 50)
     X_train_cat[:, 26:end] .= 0.0
 
 
-    train_loader = DataLoader((X_train_cont, X_train_cat, y_train),  shuffle=true)
+    train_loader = DataLoader((X_train_cont, X_train_cat, y_train),  batchsize=args.batchsize, shuffle=true)
     test_loader = DataLoader((X_train_cont, X_train_cat, y_train), batchsize=args.batchsize, shuffle=false)
 
     return train_loader, test_loader
 end
+"""

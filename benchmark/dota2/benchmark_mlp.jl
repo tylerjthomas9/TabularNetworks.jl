@@ -6,30 +6,28 @@ using CSV
 using ProgressMeter
 using Flux.Losses: logitcrossentropy
 using Random
+using CUDA
 
 
 function train(; kws...)
     # load hyperparameters
     args = MLPArgs(; kws...)
-    args.seed > 0 && Random.seed!(args.seed)
+    Random.seed!(args.seed)
 
     # GPU setup
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
-        CUDA.allowscalar(false)
+        #CUDA.allowscalar(false)
         device = gpu
     else
         @info "Training on CPU"
         device = cpu
     end
 
-    device=cpu
-
     # Create test and train dataloaders
     train_loader, test_loader = getdata(args)
 
     # Construct model
-    #model = mlp(args) |> device
     model = MLP(args) |> device
     ps = Flux.params(model) # model's trainable parameters
     
@@ -38,17 +36,14 @@ function train(; kws...)
     
     ## Training
     for epoch in 1:args.epochs
-        println("Epoch: $epoch")
-        @showprogress 1 "Training..." for (X_cont, X_cat, y) in train_loader
+        @info "Epoch: $epoch"
+        @showprogress 1 "Training... " for (X_cont, X_cat, y) in train_loader
             y = y |> device
             X_cat = X_cat |> device
             X_cont = X_cont |> device
-            # model(X_cat, X_cont)
-            pred = max.(model(X_cat, X_cont), 1e-6)
-            print(pred)
-            loss = logitcrossentropy(pred, y)
-            println(loss)
-            gs = gradient(() -> logitcrossentropy(pred, y), ps) # compute gradient
+            # pred = model(X_cat, X_cont)
+            loss = logitcrossentropy(model(X_cat, X_cont), y)
+            gs = gradient(() -> loss, ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 
@@ -60,4 +55,4 @@ end
 
 
 train(; batchsize=2048, hidden_dims=[256, 256],
-    cont_input_dim=10, cat_input_dim=10, output_dim=2)
+    cont_input_dim=2, cat_input_dim=114, output_dim=2)

@@ -3,11 +3,11 @@ using Flux.Losses: logitcrossentropy
 
 
 function loss_and_accuracy(data_loader::DataLoader, model, device; 
-    set="train"::String, verbose=true)
+    set=""::String, verbose=true)
     acc = 0
     ls = 0.0f0
     num = 0
-    testmode!(model)
+    testmode!(model, true)
     for (X_cont, X_cat, y) in data_loader
         y = y |> device
         X_cat = X_cat |> device
