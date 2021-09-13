@@ -10,8 +10,13 @@ using CUDA
 
 
 function train(; kws...)
+    # Create test and train dataloaders
+    train_loader, test_loader = getdata()
+
     # load hyperparameters
-    args = MLPArgs(; kws...)
+    cont_input_dim = size(train_loader.data[1], 1)
+    cat_input_dim = size(train_loader.data[2], 1)
+    args = MLPArgs(; cont_input_dim=cont_input_dim, cat_input_dim=cat_input_dim, kws...)
     Random.seed!(args.seed)
 
     # GPU setup
@@ -24,8 +29,6 @@ function train(; kws...)
         device = cpu
     end
 
-    # Create test and train dataloaders
-    train_loader, test_loader = getdata(args)
 
     # Construct model
     model = MLP(args) |> device
@@ -41,18 +44,16 @@ function train(; kws...)
             y = y |> device
             X_cat = X_cat |> device
             X_cont = X_cont |> device
-            # pred = model(X_cat, X_cont)
-            loss = logitcrossentropy(model(X_cat, X_cont), y)
-            gs = gradient(() -> loss, ps) # compute gradient
+            model(X_cat, X_cont)
+            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 
-        # get train/test Losses
+        # get train/test losses
         loss_and_accuracy(train_loader, model, device; set="train")
         loss_and_accuracy(test_loader, model, device; set="test")
     end
 end
 
 
-train(; batchsize=2048, hidden_dims=[256, 256],
-    cont_input_dim=2, cat_input_dim=114, output_dim=2)
+train(; hidden_dims=[256, ])

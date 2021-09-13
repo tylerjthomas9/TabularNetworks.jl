@@ -12,8 +12,11 @@ using NNlib
 
 # Struct to define hyperparameters
 @with_kw mutable struct TabTransfortmerArgs
+    cat_input_dim::Int64
+    cont_input_dim::Int64
+    cat_hidden_dim::Int64 = 32
+    cont_hidden_dim::Int64 = 32
     lr::Float64 = 0.1		# learning rate
-    batchsize::Int64 = 16  # batch size
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
@@ -27,44 +30,32 @@ using NNlib
 end
 
 
+struct TabTransformer
+    cat_input
+    cont_input
+    dense
+    output
+end
+@functor MLP
 
-function tabtransformer_input(args; cont_var, cat_var)
-    return Chain(Parallel(vcat,
-        Chain(Dense(cont_var, args.cont_dense_size),
-            BatchNorm(args.cont_dense_size, args.activation_function)),
-        Chain(Dense(cat_var, args.cat_dense_size, args.activation_function),
-            # TODO: TRANSFORMER BLOCK 
-            )
-        )
-    )
+MLP(args::TabTransfortmerArgs) = TabTransformer(
+    Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
+    Chain(
+        Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
+        BatchNorm(args.cont_hidden_dim, )
+        ),
+    Chain([Dense(if ix==1 args.cat_hidden_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
+        args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
+    Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
+)
+
+function (tab_transformer::TabTransformer)(cat, cont)
+    h_cat = tab_transformer.cat_input(cat)
+    h_cont = tab_transformer.cont_input(cont)
+    h1 = vcat(h_cat, h_cont)
+    h2 = tab_transformer.dense(h1)
+    tab_transformer.output(h2)
 end
 
-# TODO: elegant way to create a variable number of layers
-function tabtransformer(args; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
-    if size(args.hidden_sizes, 1) == 1
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[2], args.hidden_sizes[3], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    end
 
-end
+
