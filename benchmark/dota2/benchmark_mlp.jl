@@ -44,7 +44,6 @@ function train(; kws...)
             y = y |> device
             X_cat = X_cat |> device
             X_cont = X_cont |> device
-            model(X_cat, X_cont)
             gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
