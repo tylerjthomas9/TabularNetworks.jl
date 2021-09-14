@@ -1,4 +1,3 @@
-# dataset: https://archive.ics.uci.edu/ml/datasets/Dota2+Games+Results
 include("../../src/models/mlp.jl")
 include("../../src/utils/metrics.jl")
 include("./prepare_data.jl")
