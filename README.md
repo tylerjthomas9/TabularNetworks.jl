@@ -8,7 +8,6 @@ Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-wided
 * Models
   * Tabular MLP
   * Tab Transformer
-  * TabNet
 * Data preprocessing
   * General processing of continious, categorical features for all architectures 
 
