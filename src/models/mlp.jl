@@ -25,18 +25,20 @@ end
 
 
 struct MLP
-    cat_input
-    cont_input
+    input
     dense
     output
 end
 @functor MLP
 
 MLP(args::MLPArgs) = MLP(
-    Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
-    Chain(
-        Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
-        BatchNorm(args.cont_hidden_dim, )
+    Parallel(
+        vcat,
+        Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
+        Chain(
+            Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
+            BatchNorm(args.cont_hidden_dim, )
+            ),
         ),
     Chain([Dense(if ix==1 args.cat_hidden_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
         args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
@@ -44,9 +46,7 @@ MLP(args::MLPArgs) = MLP(
 )
 
 function (mlp::MLP)(cat, cont)
-    h_cat = mlp.cat_input(cat)
-    h_cont = mlp.cont_input(cont)
-    h1 = vcat(h_cat, h_cont)
+    h1 = mlp.input(cat, cont)
     h2 = mlp.dense(h1)
     mlp.output(h2)
 end
