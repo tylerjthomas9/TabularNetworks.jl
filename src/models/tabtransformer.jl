@@ -31,18 +31,20 @@ end
 
 
 struct TabTransformer
-    cat_input
-    cont_input
+    input
     dense
     output
 end
 @functor MLP
 
-MLP(args::TabTransfortmerArgs) = TabTransformer(
-    Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
-    Chain(
-        Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
-        BatchNorm(args.cont_hidden_dim, )
+TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
+    Parallel(
+        vcat,
+        Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
+        Chain(
+            Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
+            BatchNorm(args.cont_hidden_dim, )
+            ),
         ),
     Chain([Dense(if ix==1 args.cat_hidden_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
         args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
@@ -50,9 +52,7 @@ MLP(args::TabTransfortmerArgs) = TabTransformer(
 )
 
 function (tab_transformer::TabTransformer)(cat, cont)
-    h_cat = tab_transformer.cat_input(cat)
-    h_cont = tab_transformer.cont_input(cont)
-    h1 = vcat(h_cat, h_cont)
+    h1 = tab_transformer.input(cat, cont)
     h2 = tab_transformer.dense(h1)
     tab_transformer.output(h2)
 end
