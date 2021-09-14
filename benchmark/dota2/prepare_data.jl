@@ -1,3 +1,4 @@
+# dataset: https://archive.ics.uci.edu/ml/datasets/Dota2+Games+Results
 using CSV
 using DataFrames
 using Flux: onehotbatch
@@ -39,7 +40,7 @@ function getdata()
 end
 
 
-"""
+
 function getdata()
     y_train = zeros(50)
     y_train[26:end] .= 1.0
@@ -58,4 +59,3 @@ function getdata()
 
     return train_loader, test_loader
 end
-"""
