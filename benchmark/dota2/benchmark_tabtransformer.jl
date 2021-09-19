@@ -44,14 +44,11 @@ function train(; kws...)
         @showprogress 1 "Training... " for (X_cont, X_cat, y) in train_loader
             y = y |> device
             X_cat = X_cat |> device
-            X_cat_3d = zeros(args.cat_input_dim, 3, size(X_cat, 2)) |> Array{Float32} |> device
-            for ix in 1:3
-                X_cat_3d[:, ix, :] .= X_cat
-            end
-            println(size(X_cat_3d))
+            X_cat = reshape(X_cat, (size(X_cat, 1), 1, size(X_cat, 2)))
             X_cont = X_cont |> device
+            println(size(X_cat))
             model(X_cat, X_cont)
-            gs = gradient(() -> logitcrossentropy(model(X_cat_3d, X_cont), y), ps) # compute gradient
+            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 

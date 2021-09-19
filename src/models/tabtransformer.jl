@@ -28,7 +28,7 @@ include("../utils/mha.jl")
     output_activation = sigmoid
     mha_heads::Int64 = 4
     mha_head_dims::Int64 = 5
-    mha_output_dims::Int64 = 8
+    mha_output_dims::Int64 = 20
     mha_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 128
     transformer_dense_dropout::Float64 = 0.1
@@ -36,25 +36,32 @@ include("../utils/mha.jl")
 end
 
 
-struct Transformerlayer
+struct Transformer
     mha
+    ln
     dense
 end
 
-@functor Transformerlayer
+@functor Transformer
 
-Transformerlayer(args::TabTransfortmerArgs) = Transformerlayer(
+Transformer(args::TabTransfortmerArgs) = Transformer(
     MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
                                         args.mha_output_dims; future = true, pdrop = args.mha_dropout),
+    LayerNorm(args.mha_output_dims),
     Chain(Dense(args.cat_hidden_dim * args.mha_head_dims, args.transformer_dense_hidden_dim, args.activation_function), 
             Dropout(args.transformer_dense_dropout))
 )
 
-function (transformer_layer::Transformerlayer)(x)
-    h1 = atten(transformer_layer.mha, x)
-    h2 = transformer_layer.dense(h1)
-    h3 = Softmax(vcat(h1, h2), dims=1)
-    tab_transformer.output(h3)
+function (t::Transformer)(x)
+    h1 = atten(t.mha, x)
+    h2 = x + h1
+    println(size(h1))
+    println(size(h2))
+    h2 = t.ln(h2)
+    h3 = t.dense(h2)
+    h4 = h2 + h3
+    h4 = t.ln(h4)
+    h4
 end
 
 struct TabTransformer
@@ -67,7 +74,7 @@ end
 TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
     Parallel(
         vcat,
-        Transformerlayer(args),
+        Transformer(args),
         Chain(
             Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
             BatchNorm(args.cont_hidden_dim, )
