@@ -31,16 +31,14 @@ function getdata()
     y_test = onehotbatch(test[!, :Column1], [-1.0, 1.0])
 
     # Create DataLoaders (mini-batch iterators)
-
-
-    train_loader = DataLoader((X_train_cont, X_train_cat, y_train), batchsize=2048,  shuffle=true)
-    test_loader = DataLoader((X_test_cont, X_test_cat, y_test), batchsize=2048, shuffle=false)
+    train_loader = DataLoader((X_train_cat, X_train_cont, y_train), batchsize=2048,  shuffle=true)
+    test_loader = DataLoader((X_test_cat, X_test_cont, y_test), batchsize=2048, shuffle=false)
 
     return train_loader, test_loader
 end
 
 
-
+"""
 function getdata()
     y_train = zeros(50)
     y_train[26:end] .= 1.0
@@ -54,8 +52,9 @@ function getdata()
     X_train_cat = ohe_cat_features(X_train_cat)
 
 
-    train_loader = DataLoader((X_train_cont, X_train_cat, y_train),  batchsize=50, shuffle=true)
-    test_loader = DataLoader((X_train_cont, X_train_cat, y_train), batchsize=50, shuffle=false)
+    train_loader = DataLoader((X_train_cat, X_train_cont, y_train),  batchsize=50, shuffle=true)
+    test_loader = DataLoader((X_train_cat, X_train_cont, y_train), batchsize=50, shuffle=false)
 
     return train_loader, test_loader
 end
+"""

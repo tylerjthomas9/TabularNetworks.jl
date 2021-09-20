@@ -13,15 +13,15 @@ function train(; kws...)
     train_loader, test_loader = getdata()
 
     # load hyperparameters
-    cont_input_dim = size(train_loader.data[1], 1)
-    cat_input_dim = size(train_loader.data[2], 1)
+    cat_input_dim = size(train_loader.data[1], 1)
+    cont_input_dim = size(train_loader.data[2], 1)
     args = TabTransfortmerArgs(; cont_input_dim=cont_input_dim, cat_input_dim=cat_input_dim, kws...)
     Random.seed!(args.seed)
 
     # GPU setup
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
-        #CUDA.allowscalar(false)
+        CUDA.allowscalar(false)
         device = gpu
     else
         @info "Training on CPU"
@@ -41,12 +41,11 @@ function train(; kws...)
     ## Training
     for epoch in 1:args.epochs
         @info "Epoch: $epoch"
-        @showprogress 1 "Training... " for (X_cont, X_cat, y) in train_loader
+        @showprogress 1 "Training... " for (X_cat, X_cont, y) in train_loader
+            X_cont = X_cont |> device
             y = y |> device
             X_cat = X_cat |> device
             X_cat = reshape(X_cat, (size(X_cat, 1), 1, size(X_cat, 2)))
-            X_cont = X_cont |> device
-            println(size(X_cat))
             model(X_cat, X_cont)
             gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters

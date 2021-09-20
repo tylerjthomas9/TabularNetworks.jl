@@ -18,7 +18,7 @@ include("../utils/mha.jl")
     cat_hidden_dim::Int64 = 32
     cont_hidden_dim::Int64 = 32
     output_dim::Int64 = 2
-    lr::Float64 = 0.1		# learning rate
+    lr::Float64 = 1e-3		# learning rate
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
@@ -28,11 +28,35 @@ include("../utils/mha.jl")
     output_activation = sigmoid
     mha_heads::Int64 = 4
     mha_head_dims::Int64 = 5
-    mha_output_dims::Int64 = 20
-    mha_dropout::Float64 = 0.1
-    transformer_dense_hidden_dim::Int64 = 128
-    transformer_dense_dropout::Float64 = 0.1
+    transformer_dropout::Float64 = 0.1
+    transformer_dense_hidden_dim::Int64 = 64
     seed::Int64 = 42
+end
+
+#https://github.com/chengchingwen/Transformers.jl/blob/master/src/basic/transformer.jl
+struct TransformerDense{Di<:Dense, Do<:Dense}
+    din::Di
+    dout::Do
+end
+
+@functor TransformerDense
+
+
+"just a wrapper for two dense layer."
+TransformerDense(size::Int, h::Int, act = relu) = TransformerDense(
+    Dense(size, h, act),
+    Dense(h, size)
+)
+
+function (pw::TransformerDense)(x::AbstractMatrix)
+  # size(x) == (dims, seq_len)
+  return pw.dout(pw.din(x))
+end
+
+function (d::TransformerDense)(x::A) where {T, N, A<:AbstractArray{T, N}}
+  new_x = reshape(x, size(x, 1), :)
+  y = d(new_x)
+  return reshape(y, Base.setindex(size(x), size(y, 1), 1))
 end
 
 
@@ -46,22 +70,20 @@ end
 
 Transformer(args::TabTransfortmerArgs) = Transformer(
     MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
-                                        args.mha_output_dims; future = true, pdrop = args.mha_dropout),
-    LayerNorm(args.mha_output_dims),
-    Chain(Dense(args.cat_hidden_dim * args.mha_head_dims, args.transformer_dense_hidden_dim, args.activation_function), 
-            Dropout(args.transformer_dense_dropout))
+                                        args.cat_input_dim; future = true, pdrop = args.transformer_dropout),
+    LayerNorm(args.cat_input_dim),
+    Chain(TransformerDense(args.cat_input_dim, args.transformer_dense_hidden_dim, args.activation_function), 
+            Dropout(args.transformer_dropout))
 )
 
 function (t::Transformer)(x)
     h1 = atten(t.mha, x)
     h2 = x + h1
-    println(size(h1))
-    println(size(h2))
     h2 = t.ln(h2)
     h3 = t.dense(h2)
     h4 = h2 + h3
     h4 = t.ln(h4)
-    h4
+    return h4
 end
 
 struct TabTransformer
@@ -74,19 +96,19 @@ end
 TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
     Parallel(
         vcat,
-        Transformer(args),
+        Chain(Transformer(args), Flux.flatten),
         Chain(
             Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
             BatchNorm(args.cont_hidden_dim, )
             ),
         ),
-    Chain([Dense(if ix==1 args.transformer_dense_hidden_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
+    Chain([Dense(if ix==1 args.cat_input_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
         args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
     Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
 )
 
-function (tab_transformer::TabTransformer)(cat, cont)
-    h1 = tab_transformer.input(cat, cont)
+function (tab_transformer::TabTransformer)(X_cat, X_cont)
+    h1 = tab_transformer.input(X_cat, X_cont)
     h2 = tab_transformer.dense(h1)
     tab_transformer.output(h2)
 end
