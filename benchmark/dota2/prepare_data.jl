@@ -14,7 +14,7 @@ function getdata()
     X_train_cat = select(train, Not([:Column1, :Column2, :Column3])) |> Array{Float32} |>  transpose
     X_test_cat = select(test, Not([:Column1, :Column2, :Column3])) |> Array{Float32} |> transpose
 
-    X_train_cont = train[!, [:Column2, :Column3]]|> Array{Float32} |>  transpose
+    X_train_cont = train[!, [:Column2, :Column3]]|> Array{Float32} |>  transpose 
     X_test_cont = test[!, [:Column2, :Column3]] |> Array{Float32} |>  transpose
 
 
