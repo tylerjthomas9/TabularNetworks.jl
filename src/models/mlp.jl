@@ -8,6 +8,7 @@ using Parameters: @with_kw
     cont_input_dim::Int64
     cat_hidden_dim::Int64 = 32
     cont_hidden_dim::Int64 = 32
+    embedding_dim::Int64 = 32
     output_dim::Int64 = 2
     lr::Float64 = 1e-2		# learning rate
     epochs::Int64 = 10        # number of epochs
@@ -32,7 +33,9 @@ end
 MLP(args::MLPArgs) = MLP(
     Parallel(
         vcat,
-        Dense(args.cat_input_dim, args.cat_hidden_dim, args.activation_function),
+        Chain(
+            Parallel(vcat, [Flux.Embedding(args.cat_input_dim, args.embedding_dim)]...),
+            Dense(args.embedding_dim, args.cat_hidden_dim, args.activation_function)),
         Chain(
             Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
             BatchNorm(args.cont_hidden_dim, )
