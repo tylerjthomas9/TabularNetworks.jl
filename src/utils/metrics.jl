@@ -1,5 +1,6 @@
 using Flux: onecold, onehotbatch
 using Flux.Losses: logitcrossentropy
+using Flux.Data: DataLoader
 
 
 function loss_and_accuracy(data_loader::DataLoader, model, device; 

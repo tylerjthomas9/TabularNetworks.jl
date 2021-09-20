@@ -1,3 +1,10 @@
+using Flux
+using Flux: @functor
+using NeuralAttentionlib
+using NeuralAttentionlib: CausalMask, BiLengthMask, BatchedMask
+using NNlib
+include("./mha.jl")
+
 #https://github.com/chengchingwen/Transformers.jl/blob/master/src/basic/transformer.jl
 struct TransformerDense{input<:Dense, output<:Dense}
     din::input
@@ -33,7 +40,7 @@ end
 
 @functor Transformer
 
-Transformer(args::TabTransfortmerArgs) = Transformer(
+Transformer(args) = Transformer(
     MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
                                         args.cat_input_dim; future = true, pdrop = args.transformer_dropout),
     LayerNorm(args.cat_input_dim),

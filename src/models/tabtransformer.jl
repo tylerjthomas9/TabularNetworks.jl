@@ -2,13 +2,7 @@
 
 using Flux
 using Flux: @functor
-using Flux.Data: DataLoader
-using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
-using CUDA
-using NeuralAttentionlib
-using NeuralAttentionlib: CausalMask, BiLengthMask, BatchedMask
-using NNlib
 include("../layers/transformer.jl")
 
 # Struct to define hyperparameters
@@ -24,7 +18,7 @@ include("../layers/transformer.jl")
     dropout::Float64 = 0.10 # dropout from dense layers
     hidden_dims::Vector{Int64} = [64, 64] # Size of hidden layers
     dropout_rate::Float64 = 0.10 # dropout for dense layers
-    activation_function = relu
+    activation_function = Flux.relu
     output_activation = sigmoid
     mha_heads::Int64 = 4
     mha_head_dims::Int64 = 5
