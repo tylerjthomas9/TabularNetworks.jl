@@ -6,67 +6,112 @@ using Flux.Data: DataLoader
 using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
 using CUDA
-include("./attention_utils.jl")
+using NeuralAttentionlib
+using NeuralAttentionlib: CausalMask, BiLengthMask, BatchedMask
+using NNlib
+include("../utils/mha.jl")
 
 # Struct to define hyperparameters
 @with_kw mutable struct TabTransfortmerArgs
-    lr::Float64 = 0.1		# learning rate
-    batchsize::Int64 = 16  # batch size
-    epochs::Int = 10        # number of epochs
+    cat_input_dim::Int64
+    cont_input_dim::Int64
+    cat_hidden_dim::Int64 = 32
+    cont_hidden_dim::Int64 = 32
+    output_dim::Int64 = 2
+    lr::Float64 = 1e-3		# learning rate
+    epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
-    hidden_sizes::Vector{Int64} = [64, 64] # Size of hidden layers
+    hidden_dims::Vector{Int64} = [64, 64] # Size of hidden layers
     dropout_rate::Float64 = 0.10 # dropout for dense layers
     activation_function = relu
+    output_activation = sigmoid
+    mha_heads::Int64 = 4
+    mha_head_dims::Int64 = 5
+    transformer_dropout::Float64 = 0.1
+    transformer_dense_hidden_dim::Int64 = 64
+    seed::Int64 = 42
+end
+
+#https://github.com/chengchingwen/Transformers.jl/blob/master/src/basic/transformer.jl
+struct TransformerDense{Di<:Dense, Do<:Dense}
+    din::Di
+    dout::Do
+end
+
+@functor TransformerDense
+
+
+"just a wrapper for two dense layer."
+TransformerDense(size::Int, h::Int, act = relu) = TransformerDense(
+    Dense(size, h, act),
+    Dense(h, size)
+)
+
+function (pw::TransformerDense)(x::AbstractMatrix)
+  # size(x) == (dims, seq_len)
+  return pw.dout(pw.din(x))
+end
+
+function (d::TransformerDense)(x::A) where {T, N, A<:AbstractArray{T, N}}
+  new_x = reshape(x, size(x, 1), :)
+  y = d(new_x)
+  return reshape(y, Base.setindex(size(x), size(y, 1), 1))
 end
 
 
-# https://github.com/sdobber/FluxArchitectures/blob/master/DSANet/DSANet.jl
-function Scaled_Dot_Product_Attention(q, k, v, temperature, attn_dropout=0.1)
-	attn1 = NNlib.batched_mul(q, permutedims(k,[2,1,3])) / temperature
-	attn2 = Flux.softmax(attn1, dims=2)
-    attn3 = Dropout(attn_dropout)(attn2)
-    return NNlib.batched_mul(attn3,v)
+struct Transformer
+    mha
+    ln
+    dense
+end
+
+@functor Transformer
+
+Transformer(args::TabTransfortmerArgs) = Transformer(
+    MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
+                                        args.cat_input_dim; future = true, pdrop = args.transformer_dropout),
+    LayerNorm(args.cat_input_dim),
+    Chain(TransformerDense(args.cat_input_dim, args.transformer_dense_hidden_dim, args.activation_function), 
+            Dropout(args.transformer_dropout))
+)
+
+function (t::Transformer)(x)
+    h1 = atten(t.mha, x)
+    h2 = x + h1
+    h2 = t.ln(h2)
+    h3 = t.dense(h2)
+    h4 = h2 + h3
+    h4 = t.ln(h4)
+    return h4
+end
+
+struct TabTransformer
+    input
+    dense
+    output
+end
+@functor TabTransformer
+
+TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
+    Parallel(
+        vcat,
+        Chain(Transformer(args), Flux.flatten),
+        Chain(
+            Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
+            BatchNorm(args.cont_hidden_dim, )
+            ),
+        ),
+    Chain([Dense(if ix==1 args.cat_input_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
+        args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
+    Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
+)
+
+function (tab_transformer::TabTransformer)(X_cat, X_cont)
+    h1 = tab_transformer.input(X_cat, X_cont)
+    h2 = tab_transformer.dense(h1)
+    tab_transformer.output(h2)
 end
 
 
-function tabtransformer_input(args; cont_var, cat_var)
-    return Chain(Parallel(vcat,
-        Chain(Dense(cont_var, args.cont_dense_size),
-            BatchNorm(args.cont_dense_size, args.activation_function)),
-        Chain(Dense(cat_var, args.cat_dense_size, args.activation_function),
-            # TODO: TRANSFORMER BLOCK 
-            )
-        )
-    )
-end
 
-# TODO: elegant way to create a variable number of layers
-function tabtransformer(args; cont_var=10::Int64, cat_var=10::Int64, n_outputs=2::Int64)
-    if size(args.hidden_sizes, 1) == 1
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    elseif size(args.hidden_sizes, 1) == 2
-        return Chain(tabtransformer_input(args; cont_var, cat_var),
-            Dense(args.cont_dense_size + args.cat_dense_size, args.hidden_sizes[1], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[1], args.hidden_sizes[2], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[2], args.hidden_sizes[3], args.activation_function),
-            Dropout(args.dropout_rate),
-            Dense(args.hidden_sizes[end], n_outputs)
-        )
-    end
-
-end

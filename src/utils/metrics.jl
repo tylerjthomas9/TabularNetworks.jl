@@ -3,19 +3,23 @@ using Flux.Losses: logitcrossentropy
 
 
 function loss_and_accuracy(data_loader::DataLoader, model, device; 
-    set="train"::String, verbose=true)
+    set=""::String, verbose=true)
     acc = 0
     ls = 0.0f0
     num = 0
-    for (X_cont, X_cat, y) in data_loader
+    testmode!(model, true)
+    for (X_cat, X_cont, y) in data_loader
         y = y |> device
-        x = map(device, (X_cont, X_cat))
-        pred = model(x)
+        X_cat = X_cat |> device
+        X_cat = reshape(X_cat, (size(X_cat, 1), 1, size(X_cat, 2)))
+        X_cont = X_cont |> device
+        pred = model(X_cat, X_cont)
         ls += logitcrossentropy(pred, y, agg=sum)
         acc += sum(onecold(cpu(pred)) .== onecold(cpu(y)))
         num +=  size(y, 2)
     end
-
+    testmode!(model, false)
+    
     ls = ls / num
     acc = acc / num
     if verbose
