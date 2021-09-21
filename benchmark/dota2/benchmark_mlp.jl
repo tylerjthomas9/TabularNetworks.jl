@@ -1,16 +1,30 @@
 include("../../src/models/mlp.jl")
 include("../../src/utils/metrics.jl")
 include("./prepare_data.jl")
-using CSV
-using ProgressMeter
-using Flux.Losses: logitcrossentropy
-using Random
 using CUDA
-
+using DataAugmentation: Categorify
+using FastAI
+using Flux.Losses: logitcrossentropy
+using ProgressMeter
+using Random
 
 function train(; kws...)
     # Create test and train dataloaders
-    train_loader, test_loader = getdata()
+    train, test = getdata()
+
+    # set column values
+    target = :Column1
+    cont_cols = (:Column2, :Column3)
+    cat_cols = propertynames(train.table)[4:end] |> Tuple
+    cat_dict = FastAI.gettransformdict(train, Categorify, cat_cols)
+
+    # split data on target
+    train_split = mapobs(row -> (row, row[target]), train)
+    test_split = mapobs(row -> (row, row[target]), test)
+
+    # get categorical cardinalities
+    cardinalities = collect(map(col -> length(cat_dict[col]), cat_cols))
+    embedding_sizes = FastAI.Models.get_emb_sz(cardinalities)
 
     # load hyperparameters
     cat_input_dim = size(train_loader.data[1], 1)
