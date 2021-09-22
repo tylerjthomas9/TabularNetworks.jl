@@ -3,8 +3,13 @@ authors = ["Tyler Thomas"]
 version = "0.0.1"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+DataAugmentation = "88a5189c-e7ff-4f85-ac6b-e6158070f02e"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+FastAI = "5d0beca9-ade8-49ae-ad0b-a3cf890e669f"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 NeuralAttentionlib = "12afc1b8-fad6-47e1-9132-84abc478905f"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"

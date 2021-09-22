@@ -24,7 +24,6 @@ include("../layers/transformer.jl")
     mha_head_dims::Int64 = 5
     transformer_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 64
-    seed::Int64 = 42
 end
 
 struct TabTransformer

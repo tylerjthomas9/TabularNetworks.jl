@@ -1,41 +1,37 @@
-include("../../src/models/mlp.jl")
-include("../../src/utils/metrics.jl")
-include("./prepare_data.jl")
 using CUDA
 using DataAugmentation: Categorify
 using FastAI
 using Flux.Losses: logitcrossentropy
+using Flux: DataLoader
 using ProgressMeter
 using Random
+include("../../src/models/mlp.jl")
+include("../../src/utils/metrics.jl")
+include("../../src/preprocessing/ohe_cat_features.jl")
+include("./prepare_data.jl")
 
-function train(; kws...)
+
+function run_benchmark(; kws...)
+    Random.seed!(42)
+
     # Create test and train dataloaders
-    train, test = getdata()
-
-    # set column values
-    target = :Column1
-    cont_cols = (:Column2, :Column3)
-    cat_cols = propertynames(train.table)[4:end] |> Tuple
-    cat_dict = FastAI.gettransformdict(train, Categorify, cat_cols)
-
-    # split data on target
-    train_split = mapobs(row -> (row, row[target]), train)
-    test_split = mapobs(row -> (row, row[target]), test)
+    train_loader, test_loader = getdata()
 
     # get categorical cardinalities
-    cardinalities = collect(map(col -> length(cat_dict[col]), cat_cols))
-    embedding_sizes = FastAI.Models.get_emb_sz(cardinalities)
+    cat_dict = get_category_dict(train_loader.data[1])
+    cardinalities = collect(map(col -> length(cat_dict[col]), collect(1:length(cat_dict))))
+    embedding_dims = FastAI.Models.get_emb_sz(cardinalities)
+
+    # get continious variable input dims
+    cont_input_dim = size(train_loader.data[2], 2)
 
     # load hyperparameters
-    cat_input_dim = size(train_loader.data[1], 1)
-    cont_input_dim = size(train_loader.data[2], 1)
-    args = MLPArgs(; cont_input_dim=cont_input_dim, cat_input_dim=cat_input_dim, kws...)
-    Random.seed!(args.seed)
+    args = MLPArgs(; embedding_dims=embedding_dims, cont_input_dim=cont_input_dim, kws...)
 
     # GPU setup
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
-        #CUDA.allowscalar(false)
+        CUDA.allowscalar(false)
         device = gpu
     else
         @info "Training on CPU"
@@ -54,18 +50,20 @@ function train(; kws...)
     for epoch in 1:args.epochs
         @info "Epoch: $epoch"
         @showprogress 1 "Training... " for (X_cat, X_cont, y) in train_loader
-            X_cat = X_cat |> device
+            X_cat = ohe_cat_features(X_cat, cat_dict) |> device
+            println(typeof(X_cat))
             X_cont = X_cont |> device
             y = y |> device
-            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
-            Flux.Optimise.update!(opt, ps, gs) # update parameters
+            model(X_cat, X_cont)
+            # gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
+            # Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 
         # get train/test losses
-        loss_and_accuracy(train_loader, model, device; set="train")
-        loss_and_accuracy(test_loader, model, device; set="test")
+        loss_and_accuracy(train_loader, cat_dict, model, device; set="train")
+        loss_and_accuracy(test_loader, cat_dict, model, device; set="test")
     end
 end
 
 
-train(; hidden_dims=[256, ])
+a = run_benchmark(; hidden_dims=(128, 64))
