@@ -25,24 +25,25 @@ end
 
 
 struct MLP
-    model
+    cat_backbone
+    cont_backbone
+    dense
+    output
 end
 @functor MLP
 
 MLP(args::MLPArgs) = MLP(
-    TabularModel(
-                tabular_embedding_backbone(args.embedding_dims),
-                BatchNorm(args.cont_input_dim),
-                Dense(args.hidden_dims[end], args.output_dim, args.output_activation);
-                layersizes = args.hidden_dims,
-                batchnorm = args.batchnorm,
-                activation = args.activation,
-                linear_first = args.linear_first
-    )
+    tabular_embedding_backbone(args.embedding_dims),
+    BatchNorm(args.cont_input_dim),
+    dense_layers(args),
+    Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
 )
 
 function (mlp::MLP)(X_cat, X_cont)
-    mlp.model(X_cat, X_cont)
+    h_cat = mlp.cat_backbone(X_cat...)
+    h_cont = mlp.cont_backbone(X_cont)
+    h2 = mlp.dense(vcat(h_cat, h_cont))
+    mlp.output(h2)
 end
 
 

@@ -1,5 +1,4 @@
 using CUDA
-using DataAugmentation: Categorify
 using FastAI
 using Flux.Losses: logitcrossentropy
 using Flux: DataLoader
@@ -23,7 +22,7 @@ function run_benchmark(; kws...)
     embedding_dims = FastAI.Models.get_emb_sz(cardinalities)
 
     # get continious variable input dims
-    cont_input_dim = size(train_loader.data[2], 2)
+    cont_input_dim = size(train_loader.data[2], 1)
 
     # load hyperparameters
     args = MLPArgs(; embedding_dims=embedding_dims, cont_input_dim=cont_input_dim, kws...)
@@ -51,12 +50,10 @@ function run_benchmark(; kws...)
         @info "Epoch: $epoch"
         @showprogress 1 "Training... " for (X_cat, X_cont, y) in train_loader
             X_cat = ohe_cat_features(X_cat, cat_dict) |> device
-            println(typeof(X_cat))
             X_cont = X_cont |> device
             y = y |> device
-            model(X_cat, X_cont)
-            # gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
-            # Flux.Optimise.update!(opt, ps, gs) # update parameters
+            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
+            Flux.Optimise.update!(opt, ps, gs) # update parameters
         end
 
         # get train/test losses

@@ -4,6 +4,7 @@ using DataFrames
 using Flux: onehotbatch
 using Flux.Data: DataLoader
 using StatsBase
+using Statistics: var
 include("../../src/preprocessing/ohe_cat_features.jl")
 
 
@@ -16,6 +17,11 @@ function getdata()
 
     X_train_cont = train[!, [:Column2, :Column3]]|> Array{Float32} |>  transpose
     X_test_cont = test[!, [:Column2, :Column3]] |> Array{Float32} |>  transpose
+
+    # drop cat variables with 1 category
+    cat_var = var.(eachrow(X_train_cat))
+    X_train_cat = X_train_cat[cat_var.!=0.0, :]
+    X_test_cat = X_test_cat[cat_var.!=0.0, :]
 
     # standardize continious data
     dt = fit(ZScoreTransform, X_train_cont, dims=2)
