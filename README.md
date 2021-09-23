@@ -6,12 +6,10 @@ Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-wided
 # Models
 
 * Tabular MLP
-  * Categorical features one-hot encoded, passed into dense layer
-    * TODO: Categorical Embeddings
+  * Categorical features one-hot encoded, passed into embedding layer
   * Continious features fed into dense layer with batchnorm1d
 * TabTransformer (https://arxiv.org/abs/2012.06678)
-  * Categorical features one-hot encoded, passed into dense layer
-    * TODO: Proper embeddings from the paper
+  * Categorical features one-hot encoded, passed into embedding layer, then transformer block
   * Continious features fed into dense layer with batchnorm1d
 
 # Roadmap
@@ -20,9 +18,10 @@ Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-wided
 * Models
   * Tabular MLP
   * Tab Transformer
+  * TabNet
 * Data preprocessing
   * General processing of continious, categorical features for all architectures 
 
-## Long term goals
+## v0.2 goals
 * Pre-training support for models like TabNet
 * Comprehensive documentation on the architectures 
