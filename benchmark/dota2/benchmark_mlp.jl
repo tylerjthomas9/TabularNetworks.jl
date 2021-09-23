@@ -1,27 +1,37 @@
+using CUDA
+using FastAI
+using Flux.Losses: logitcrossentropy
+using Flux: DataLoader
+using ProgressMeter
+using Random
+using Zygote
 include("../../src/models/mlp.jl")
 include("../../src/utils/metrics.jl")
 include("./prepare_data.jl")
-using CSV
-using ProgressMeter
-using Flux.Losses: logitcrossentropy
-using Random
-using CUDA
+include("../../src/preprocessing/ohe_cat_features.jl")
 
 
-function train(; kws...)
+function run_benchmark(; kws...)
+    Random.seed!(42)
+
     # Create test and train dataloaders
-    train_loader, test_loader = getdata()
+    tabular_dataloaders = getdata()
+
+    # get categorical cardinalities
+    cardinalities = collect(map(col -> length(tabular_dataloaders.cat_dict[col]), 
+                collect(1:length(tabular_dataloaders.cat_dict))))
+    embedding_dims = FastAI.Models.get_emb_sz(cardinalities)
+
+    # get continious variable input dims
+    cont_input_dim = size(tabular_dataloaders.train_loader.data[2], 1)
 
     # load hyperparameters
-    cat_input_dim = size(train_loader.data[1], 1)
-    cont_input_dim = size(train_loader.data[2], 1)
-    args = MLPArgs(; cont_input_dim=cont_input_dim, cat_input_dim=cat_input_dim, kws...)
-    Random.seed!(args.seed)
+    args = MLPArgs(; embedding_dims=embedding_dims, cont_input_dim=cont_input_dim, kws...)
 
     # GPU setup
     if CUDA.functional() && args.use_cuda
         @info "Training on CUDA GPU"
-        #CUDA.allowscalar(false)
+        CUDA.allowscalar(false)
         device = gpu
     else
         @info "Training on CPU"
@@ -39,19 +49,25 @@ function train(; kws...)
     ## Training
     for epoch in 1:args.epochs
         @info "Epoch: $epoch"
-        @showprogress 1 "Training... " for (X_cat, X_cont, y) in train_loader
+        progress = Progress(length(tabular_dataloaders.train_loader))
+        for (y, X_cont, X_cat...) in tabular_dataloaders.train_loader
+            # send batch  to device
             X_cat = X_cat |> device
             X_cont = X_cont |> device
             y = y |> device
-            gs = gradient(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) # compute gradient
+
+            loss, back = Flux.pullback(() -> logitcrossentropy(model(X_cat, X_cont), y), ps) 
+            gs = back(one(loss)) # calculate gradient
             Flux.Optimise.update!(opt, ps, gs) # update parameters
+
+            next!(progress; showvalues=[(:loss, loss)])  # show loss
         end
 
         # get train/test losses
-        loss_and_accuracy(train_loader, model, device; set="train")
-        loss_and_accuracy(test_loader, model, device; set="test")
+        loss_and_accuracy(tabular_dataloaders.train_loader, model, device; set="train")
+        loss_and_accuracy(tabular_dataloaders.test_loader, model, device; set="test")
     end
 end
 
 
-train(; hidden_dims=[256, ])
+a = run_benchmark(; hidden_dims=(256, 128))

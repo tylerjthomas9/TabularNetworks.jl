@@ -2,115 +2,82 @@
 
 using Flux
 using Flux: @functor
-using Flux.Data: DataLoader
-using Flux.Losses: logitcrossentropy
 using Parameters: @with_kw
-using CUDA
-using NeuralAttentionlib
-using NeuralAttentionlib: CausalMask, BiLengthMask, BatchedMask
-using NNlib
-include("../utils/mha.jl")
+using FastAI
+using FastAI.Models: TabularModel
+import FastAI.Models.tabular_embedding_backbone
+include("../layers/transformer_block.jl")
+include("../layers/categorical_embeddings.jl")
 
 # Struct to define hyperparameters
 @with_kw mutable struct TabTransfortmerArgs
-    cat_input_dim::Int64
+    embedding_dims::Vector{Tuple{Int64, Int64}} 
     cont_input_dim::Int64
-    cat_hidden_dim::Int64 = 32
-    cont_hidden_dim::Int64 = 32
     output_dim::Int64 = 2
     lr::Float64 = 1e-3		# learning rate
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
-    hidden_dims::Vector{Int64} = [64, 64] # Size of hidden layers
+    hidden_dims::Vector{Int64} = [128, 64] # Size of hidden layers
     dropout_rate::Float64 = 0.10 # dropout for dense layers
-    activation_function = relu
+    batchnorm::Bool = true # batchnorm on dense layers
+    linear_first::Bool = true # linear layer before or after batch norm
+    activation = Flux.relu
     output_activation = sigmoid
-    mha_heads::Int64 = 4
-    mha_head_dims::Int64 = 5
+    mha_heads::Int64 = 8
+    mha_head_dims::Int64 = 16
     transformer_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 64
-    seed::Int64 = 42
-end
-
-#https://github.com/chengchingwen/Transformers.jl/blob/master/src/basic/transformer.jl
-struct TransformerDense{Di<:Dense, Do<:Dense}
-    din::Di
-    dout::Do
-end
-
-@functor TransformerDense
-
-
-"just a wrapper for two dense layer."
-TransformerDense(size::Int, h::Int, act = relu) = TransformerDense(
-    Dense(size, h, act),
-    Dense(h, size)
-)
-
-function (pw::TransformerDense)(x::AbstractMatrix)
-  # size(x) == (dims, seq_len)
-  return pw.dout(pw.din(x))
-end
-
-function (d::TransformerDense)(x::A) where {T, N, A<:AbstractArray{T, N}}
-  new_x = reshape(x, size(x, 1), :)
-  y = d(new_x)
-  return reshape(y, Base.setindex(size(x), size(y, 1), 1))
 end
 
 
-struct Transformer
-    mha
-    ln
-    dense
-end
+"""
+Create a series of dense layers following the
+embedding and continious data vcat
 
-@functor Transformer
+https://github.com/FluxML/FastAI.jl/blob/master/src/models/tabularmodel.jl
+"""
+function dense_layers(args)
+    layers = []
+    first_layer = linbndrop(sum([i[1] for i in args.embedding_dims]) + args.cont_input_dim, first(args.hidden_dims); 
+                    use_bn=args.batchnorm, p=args.dropout_rate, lin_first=args.linear_first, 
+                    act=args.activation)
+    push!(layers, first_layer)
 
-Transformer(args::TabTransfortmerArgs) = Transformer(
-    MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
-                                        args.cat_input_dim; future = true, pdrop = args.transformer_dropout),
-    LayerNorm(args.cat_input_dim),
-    Chain(TransformerDense(args.cat_input_dim, args.transformer_dense_hidden_dim, args.activation_function), 
-            Dropout(args.transformer_dropout))
-)
+    for (isize, osize) in zip(args.hidden_dims[1:(end-1)], args.hidden_dims[2:end])
+        layer = linbndrop(isize, osize; use_bn=args.batchnorm, p=args.dropout_rate, 
+                        lin_first=args.linear_first, act=args.activation)
+        push!(layers, layer)
+    end
 
-function (t::Transformer)(x)
-    h1 = atten(t.mha, x)
-    h2 = x + h1
-    h2 = t.ln(h2)
-    h3 = t.dense(h2)
-    h4 = h2 + h3
-    h4 = t.ln(h4)
-    return h4
+    return Chain(layers...)
+
 end
 
 struct TabTransformer
-    input
+    cat_embeddings
+    cat_backbone
+    cont_backbone
     dense
     output
 end
 @functor TabTransformer
 
 TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
-    Parallel(
-        vcat,
-        Chain(Transformer(args), Flux.flatten),
-        Chain(
-            Dense(args.cont_input_dim, args.cont_hidden_dim, args.activation_function),
-            BatchNorm(args.cont_hidden_dim, )
-            ),
-        ),
-    Chain([Dense(if ix==1 args.cat_input_dim + args.cont_hidden_dim else args.hidden_dims[ix-1] end, 
-        args.hidden_dims[ix], args.activation_function) for ix in 1:size(args.hidden_dims, 1)]...),
+    tabular_embedding_backbone(args.embedding_dims),
+    Chain(TransformerBlock(args), 
+            Flux.flatten),
+    BatchNorm(args.cont_input_dim),
+    dense_layers(args),
     Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
 )
 
-function (tab_transformer::TabTransformer)(X_cat, X_cont)
-    h1 = tab_transformer.input(X_cat, X_cont)
-    h2 = tab_transformer.dense(h1)
-    tab_transformer.output(h2)
+function (t::TabTransformer)(X_cat, X_cont)
+    h_cat = t.cat_embeddings(X_cat...)
+    h_cat = t.cat_backbone(reshape(h_cat, (size(h_cat, 1), 1, size(h_cat, 2))))
+    h_cont = t.cont_backbone(X_cont)
+    h2 = t.dense(vcat(h_cat, h_cont))
+    t.output(h2)
 end
 
 
