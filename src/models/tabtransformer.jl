@@ -14,7 +14,7 @@ include("../layers/categorical_embeddings.jl")
     embedding_dims::Vector{Tuple{Int64, Int64}} 
     cont_input_dim::Int64
     output_dim::Int64 = 2
-    lr::Float64 = 1e-3		# learning rate
+    lr::Float64 = 1e-4		# learning rate
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
