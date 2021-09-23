@@ -2,6 +2,7 @@
 
 Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-widedeep: https://github.com/jrzaurin/pytorch-widedeep
 
+TODO: Clean up embeddings
 
 # Models
 
