@@ -14,7 +14,7 @@ include("../../src/preprocessing/ohe_cat_features.jl")
     cat_dict
 end
 
-function getdata()
+function getdata(; batchsize=4096)
     train = CSV.File("input/dota2Train.csv", delim=",", header=0) |> DataFrame
     test = CSV.File("input/dota2Test.csv", delim=",", header=0) |> DataFrame
 
@@ -47,8 +47,8 @@ function getdata()
     X_test_cat = ohe_cat_features(X_test_cat, cat_dict)
 
     # Create DataLoaders (mini-batch iterators)
-    train_loader = DataLoader((y_train, X_train_cont, X_train_cat...), batchsize=2048,  shuffle=true)
-    test_loader = DataLoader((y_test, X_test_cont, X_test_cat...), batchsize=2048, shuffle=false)
+    train_loader = DataLoader((y_train, X_train_cont, X_train_cat...), batchsize=batchsize,  shuffle=true)
+    test_loader = DataLoader((y_test, X_test_cont, X_test_cat...), batchsize=batchsize, shuffle=false)
 
     tabular_dataloaders = TabularDataloaders(train_loader, test_loader, cat_dict)
     return tabular_dataloaders
