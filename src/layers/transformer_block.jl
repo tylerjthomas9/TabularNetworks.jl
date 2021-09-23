@@ -32,23 +32,26 @@ function (d::TransformerDense)(x::A) where {T, N, A<:AbstractArray{T, N}}
 end
 
 
-struct Transformer
+struct TransformerBlock
     mha
     ln
     dense
 end
 
-@functor Transformer
+@functor TransformerBlock
 
-Transformer(args) = Transformer(
-    MultiheadAttention(args.mha_heads, args.cat_input_dim, args.mha_head_dims, 
-                                        args.cat_input_dim; future = true, pdrop = args.transformer_dropout),
-    LayerNorm(args.cat_input_dim),
-    Chain(TransformerDense(args.cat_input_dim, args.transformer_dense_hidden_dim, args.activation_function), 
+"""
+Generic transformer block
+"""
+TransformerBlock(args) = TransformerBlock(
+    MultiheadAttention(args.mha_heads, sum([i[1] for i in args.embedding_dims]), args.mha_head_dims, 
+    sum([i[1] for i in args.embedding_dims]); future = true, pdrop = args.transformer_dropout),
+    LayerNorm(sum([i[1] for i in args.embedding_dims])),
+    Chain(TransformerDense(sum([i[1] for i in args.embedding_dims]), args.transformer_dense_hidden_dim, args.activation), 
             Dropout(args.transformer_dropout))
 )
 
-function (t::Transformer)(x)
+function (t::TransformerBlock)(x)
     h1 = atten(t.mha, x)
     h2 = x + h1
     h2 = t.ln(h2)

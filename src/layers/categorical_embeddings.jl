@@ -2,7 +2,7 @@ using FastAI
 
 # https://github.com/FluxML/FastAI.jl/blob/master/src/models/tabularmodel.jl
 function tabular_embedding_backbone(embedding_sizes, dropout_rate=0.)
-    embedslist = [Flux.Embedding(nf, ni) for (ni, nf) in embedding_sizes]
+    embedslist = [Flux.Embedding(ni, nf) for (nf, ni) in embedding_sizes]
     emb_drop = iszero(dropout_rate) ? identity : Dropout(dropout_rate)
     Chain(
         Parallel(vcat, embedslist), 
