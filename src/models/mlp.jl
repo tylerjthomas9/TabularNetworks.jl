@@ -2,7 +2,6 @@ using Flux
 using Flux: @functor
 using Parameters: @with_kw
 using FastAI
-using FastAI.Models: TabularModel
 import FastAI.Models.tabular_embedding_backbone
 include("../layers/categorical_embeddings.jl")
 
