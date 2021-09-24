@@ -14,18 +14,18 @@ include("../layers/categorical_embeddings.jl")
     mha_input_dims::Int64
     cont_input_dim::Int64
     output_dim::Int64 = 2
-    lr::Float64 = 1e-4		# learning rate
+    lr::Float64 = 3e-4		# learning rate
     epochs::Int64 = 10        # number of epochs
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
     hidden_dims::Vector{Int64} = [128, 64] # Size of hidden layers
-    dropout_rate::Float64 = 0.10 # dropout for dense layers
+    embedding_dropout::Float64 = 0.10 # dropout for categorical embeddin
     batchnorm::Bool = true # batchnorm on dense layers
     linear_first::Bool = true # linear layer before or after batch norm
     activation = Flux.relu
     output_activation = sigmoid
     mha_heads::Int64 = 8
-    mha_head_dims::Int64 = 16
+    mha_head_dims::Int64 = 32
     transformer_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 64
 end
@@ -40,12 +40,12 @@ https://github.com/FluxML/FastAI.jl/blob/master/src/models/tabularmodel.jl
 function dense_layers(args)
     layers = []
     first_layer = linbndrop(args.mha_input_dims + args.cont_input_dim, first(args.hidden_dims); 
-                    use_bn=args.batchnorm, p=args.dropout_rate, lin_first=args.linear_first, 
+                    use_bn=args.batchnorm, p=args.dropout, lin_first=args.linear_first, 
                     act=args.activation)
     push!(layers, first_layer)
 
     for (isize, osize) in zip(args.hidden_dims[1:(end-1)], args.hidden_dims[2:end])
-        layer = linbndrop(isize, osize; use_bn=args.batchnorm, p=args.dropout_rate, 
+        layer = linbndrop(isize, osize; use_bn=args.batchnorm, p=args.dropout, 
                         lin_first=args.linear_first, act=args.activation)
         push!(layers, layer)
     end
@@ -64,7 +64,7 @@ end
 @functor TabTransformer
 
 TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
-    tabular_embedding_backbone(args.embedding_dims),
+    tabular_embedding_backbone(args.embedding_dims, args.embedding_dropout),
     Chain(TransformerBlock(args), 
             Flux.flatten),
     BatchNorm(args.cont_input_dim),

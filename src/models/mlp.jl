@@ -15,7 +15,7 @@ include("../layers/categorical_embeddings.jl")
     use_cuda::Bool = true   # use gpu (if cuda available)
     dropout::Float64 = 0.10 # dropout from dense layers
     hidden_dims::Tuple = (128, 64) # Size of dense hidden layers
-    dropout_rate::Float64 = 0.10 # dropout for dense layers
+    embedding_dropout::Float64 = 0.10 # dropout for categorical embedding
     batchnorm::Bool = true # batchnorm on dense layers
     linear_first::Bool = true # linear layer before or after batch norm
     activation = Flux.relu
@@ -33,12 +33,12 @@ function dense_layers(args)
 
     layers = []
     first_layer = linbndrop(cat_input_dim + args.cont_input_dim, first(args.hidden_dims); 
-                    use_bn=args.batchnorm, p=args.dropout_rate, lin_first=args.linear_first, 
+                    use_bn=args.batchnorm, p=args.dropout, lin_first=args.linear_first, 
                     act=args.activation)
     push!(layers, first_layer)
 
     for (isize, osize) in zip(args.hidden_dims[1:(end-1)], args.hidden_dims[2:end])
-        layer = linbndrop(isize, osize; use_bn=args.batchnorm, p=args.dropout_rate, 
+        layer = linbndrop(isize, osize; use_bn=args.batchnorm, p=args.dropout, 
                         lin_first=args.linear_first, act=args.activation)
         push!(layers, layer)
     end
@@ -57,7 +57,7 @@ end
 @functor MLP
 
 MLP(args::MLPArgs) = MLP(
-    tabular_embedding_backbone(args.embedding_dims),
+    tabular_embedding_backbone(args.embedding_dims, args.embedding_dropout),
     BatchNorm(args.cont_input_dim),
     dense_layers(args),
     Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
