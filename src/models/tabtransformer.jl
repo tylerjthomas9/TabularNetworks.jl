@@ -11,6 +11,7 @@ include("../layers/categorical_embeddings.jl")
 # Struct to define hyperparameters
 @with_kw mutable struct TabTransfortmerArgs
     embedding_dims::Vector{Tuple{Int64, Int64}} 
+    mha_input_dims::Int64
     cont_input_dim::Int64
     output_dim::Int64 = 2
     lr::Float64 = 1e-4		# learning rate
@@ -38,7 +39,7 @@ https://github.com/FluxML/FastAI.jl/blob/master/src/models/tabularmodel.jl
 """
 function dense_layers(args)
     layers = []
-    first_layer = linbndrop(sum([i[1] for i in args.embedding_dims]) + args.cont_input_dim, first(args.hidden_dims); 
+    first_layer = linbndrop(args.mha_input_dims + args.cont_input_dim, first(args.hidden_dims); 
                     use_bn=args.batchnorm, p=args.dropout_rate, lin_first=args.linear_first, 
                     act=args.activation)
     push!(layers, first_layer)
