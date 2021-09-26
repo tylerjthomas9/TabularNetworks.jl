@@ -22,7 +22,9 @@ function train(; kws...)
     # get continious variable input dims
     cont_input_dim = size(tabular_dataloaders.train_loader.data[2], 1)
 
-    args = TabTransfortmerArgs(; embedding_dims=embedding_dims, cont_input_dim=cont_input_dim, kws...)
+    args = TabTransfortmerArgs(; embedding_dims=embedding_dims, 
+                                mha_input_dims=sum([i[1] for i in embedding_dims]),
+                                cont_input_dim=cont_input_dim, kws...)
 
     # GPU setup
     if CUDA.functional() && args.use_cuda
@@ -33,8 +35,6 @@ function train(; kws...)
         @info "Training on CPU"
         device = cpu
     end
-
-    device = cpu
 
 
     # Construct model

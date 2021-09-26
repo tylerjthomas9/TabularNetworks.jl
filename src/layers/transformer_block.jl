@@ -44,10 +44,10 @@ end
 Generic transformer block
 """
 TransformerBlock(args) = TransformerBlock(
-    MultiheadAttention(args.mha_heads, sum([i[1] for i in args.embedding_dims]), args.mha_head_dims, 
-    sum([i[1] for i in args.embedding_dims]); future = true, pdrop = args.transformer_dropout),
+    MultiheadAttention(args.mha_heads, args.mha_input_dims, args.mha_head_dims, 
+    args.mha_input_dims; future = true, pdrop = args.transformer_dropout),
     LayerNorm(sum([i[1] for i in args.embedding_dims])),
-    Chain(TransformerDense(sum([i[1] for i in args.embedding_dims]), args.transformer_dense_hidden_dim, args.activation), 
+    Chain(TransformerDense(args.mha_input_dims, args.transformer_dense_hidden_dim, args.activation), 
             Dropout(args.transformer_dropout))
 )
 
