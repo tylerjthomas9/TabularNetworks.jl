@@ -1,5 +1,5 @@
 ## MLP
-<img src="../../docs/architectures/MLP.png" width="600px"></img>
+<img src="../../docs/architectures/MLP.png" width="300px"></img>
 
 ## TabTransformer (https://arxiv.org/abs/2012.06678)
 
