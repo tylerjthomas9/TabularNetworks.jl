@@ -5,8 +5,6 @@ using MacroTools: @forward, @capture
 
 # taken from
 # https://github.com/chengchingwen/NeuralAttentionlib.jl/blob/master/test/mha.jl
-# https://github.com/chengchingwen/NeuralAttentionlib.jl/blob/master/test/mha.jl
-
 
 const Abstract3DTensor{T} = AbstractArray{T, 3}
 
