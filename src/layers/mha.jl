@@ -106,18 +106,3 @@ function (mh::MultiheadAttention)(query::A1,
   out = @toNd mh.oproj(atten)
   out #size(out) == (h, q_seq_len, batch)
 end
-
-
-# head = 4
-# input_dims = 20
-# head_dims = 5
-# output_dims = 8
-# x = randn(input_dims, 3, 50)
-# mha = MultiheadAttention(head, input_dims, head_dims, output_dims;
-#                             future = true, pdrop = 0) # disable dropout
-# a = atten(mha, x)
-# println(typeof(a))
-# println(typeof(a[1]))
-# println(a)
-# println(size(a))
-# println(size(a[1]))
