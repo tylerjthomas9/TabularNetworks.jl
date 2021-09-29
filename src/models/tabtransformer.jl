@@ -24,11 +24,11 @@ include("../layers/categorical_embeddings.jl")
     linear_first::Bool = true # linear layer before or after batch norm
     activation = Flux.relu
     output_activation = sigmoid
-    mha_heads::Int64 = 8
+    mha_heads::Int64 = 8 
     mha_head_dims::Int64 = 32
     transformer_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 64
-    transformer_blocks::Int64 = 2 
+    transformer_blocks::Int64 = 6 
 end
 
 
