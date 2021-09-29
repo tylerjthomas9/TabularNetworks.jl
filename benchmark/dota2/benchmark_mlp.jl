@@ -4,7 +4,6 @@ using Flux.Losses: logitcrossentropy
 using Flux: DataLoader
 using ProgressMeter
 using Random
-using Zygote
 include("../../src/models/mlp.jl")
 include("../../src/utils/metrics.jl")
 include("./prepare_data.jl")
