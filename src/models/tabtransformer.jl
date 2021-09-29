@@ -28,6 +28,7 @@ include("../layers/categorical_embeddings.jl")
     mha_head_dims::Int64 = 32
     transformer_dropout::Float64 = 0.1
     transformer_dense_hidden_dim::Int64 = 64
+    transformer_blocks::Int64 = 2 
 end
 
 
@@ -65,7 +66,7 @@ end
 
 TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
     tabular_embedding_backbone(args.embedding_dims, args.embedding_dropout),
-    Chain(TransformerBlock(args), 
+    Chain([TransformerBlock(args) for i in 1:args.transformer_blocks]..., 
             Flux.flatten),
     BatchNorm(args.cont_input_dim),
     dense_layers(args),
