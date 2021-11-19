@@ -2,16 +2,15 @@
 
 Small project to learn Flux.jl/Deep learning in Julia. Inspired by pytorch-widedeep: https://github.com/jrzaurin/pytorch-widedeep
 
-TODO: Clean up embeddings
 
 # Models
 
 * Tabular MLP
   * Categorical features one-hot encoded, passed into embedding layer
-  * Continious features fed into dense layer with batchnorm1d
+  * Continious features fed into dense layer with BatchNorm
 * TabTransformer (https://arxiv.org/abs/2012.06678)
   * Categorical features one-hot encoded, passed into embedding layer, then transformer block
-  * Continious features fed into dense layer with batchnorm1d
+  * Continious features fed into LayerNorm
 
 # Roadmap
 
@@ -26,3 +25,4 @@ TODO: Clean up embeddings
 ## v0.2 goals
 * Pre-training support for models like TabNet
 * Comprehensive documentation on the architectures 
+* SAINT implementation

@@ -1,5 +1,5 @@
 name = "TabularNetworks.jl"
-authors = ["Tyler Thomas"]
+authors = ["tylerjthomas9 <tylerjthomas9@gmail.com>"]
 version = "0.0.1"
 
 [deps]
