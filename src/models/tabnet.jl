@@ -11,7 +11,7 @@ include("../layers/transformer_block.jl")
 include("../layers/categorical_embeddings.jl")
 
 # Struct to define hyperparameters
-@with_kw mutable struct TabTransfortmerArgs
+@with_kw mutable struct TabNetArgs
     embedding_dims::Vector{Tuple{Int64, Int64}} 
     mha_input_dims::Int64
     cont_input_dim::Int64
@@ -34,12 +34,24 @@ include("../layers/categorical_embeddings.jl")
 end
 
 
+struct FeatureTransformer
 
-struct TabTransformer
+end
+
+struct TabNetEncoder
+
+end
+
+struct TabNetDecoder
+
+end
+
+
+struct TabNet
     cat_embeddings
     cat_backbone
     cont_backbone
     dense
     output
 end
-@functor TabTransformer
+@functor TabNet
