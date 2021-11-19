@@ -68,7 +68,7 @@ TabTransformer(args::TabTransfortmerArgs) = TabTransformer(
     tabular_embedding_backbone(args.embedding_dims, args.embedding_dropout),
     Chain([TransformerBlock(args) for i in 1:args.transformer_blocks]..., 
             Flux.flatten),
-    BatchNorm(args.cont_input_dim),
+    LayerNorm(args.cont_input_dim),
     dense_layers(args),
     Dense(args.hidden_dims[end], args.output_dim, args.output_activation)
 )
