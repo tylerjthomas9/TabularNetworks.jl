@@ -1,6 +1,8 @@
 using FastAI
 
-# https://github.com/FluxML/FastAI.jl/blob/master/src/models/tabularmodel.jl
+"""
+https://github.com/FluxML/FastAI.jl/blob/c3bb46a3b9ccc177e971fcfea020e91997b2a94e/src/Tabular/models.jl#L137
+"""
 function tabular_embedding_backbone(embedding_sizes, dropout_rate=0.)
     embedslist = [Flux.Embedding(ni, nf) for (nf, ni) in embedding_sizes]
     emb_drop = iszero(dropout_rate) ? identity : Dropout(dropout_rate)
@@ -11,10 +13,9 @@ function tabular_embedding_backbone(embedding_sizes, dropout_rate=0.)
     Parallel(vcat, embedslist)
 end
 
-
-# FROM: https://github.com/FluxML/FastAI.jl/blob/master/src/models/blocks.jl
-# function was not importing, so I copied it over, for now.
-
+"""
+https://github.com/FluxML/FastAI.jl/blob/c3bb46a3b9ccc177e971fcfea020e91997b2a94e/src/Vision/models/blocks.jl#L60
+"""
 function linbndrop(h_in, h_out; use_bn=true, p=0., act=identity, lin_first=false)
     bn = BatchNorm(lin_first ? h_out : h_in)
     dropout = p == 0 ? identity : Dropout(p)
