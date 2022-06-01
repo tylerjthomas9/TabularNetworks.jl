@@ -14,6 +14,8 @@ NeuralAttentionlib = "12afc1b8-fad6-47e1-9132-84abc478905f"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
+[compat]
+FastAI = "0.4"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
